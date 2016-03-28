@@ -1,0 +1,7 @@
+name: Publish Document
+account: rpubs
+server: rpubs.com
+bundleId:
+        https://api.rpubs.com/api/v1/document/121809/865cf79d441b400396a34b8dfdd7c41f
+url: http://rpubs.com/richarddeng88/121809
+when: 1445818512.75447

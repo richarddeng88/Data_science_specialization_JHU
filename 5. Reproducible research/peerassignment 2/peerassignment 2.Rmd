@@ -1,0 +1,137 @@
+---
+title: "Study of Major Weather Events in USA and Their Effects in Human Life and Economy"
+output: html_document
+---
+Qing Deng
+
+Oct 25 2015
+
+# Synopsis
+- Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern. 
+
+- This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage. 
+
+- This report serves to find the evens that lead to the most impact on fatalities, injuries and property damage.
+
+# Data source
+
+The data for this assignment come in the form of a comma-separated-value file compressed via the bzip2 algorithm to reduce its size. You can download the file from the course web site:
+
+[Storm Data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2)[47MB]
+
+There is also some documentation of the database available. Here you will find how some of the variables are constructed/defined.
+
+- National Weather Service [Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf) 
+- National Climatic Data Center Storm Events [FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)
+
+The events in the database start in the year 1950 and end in November 2011. In the earlier years of the database there are generally fewer events recorded, most likely due to a lack of good records. More recent years should be considered more complete.
+
+#Data Processing
+
+## read the data
+```{r}
+ setwd("/Users/Richard/Desktop/Rcourse")
+```
+
+Download the file and read into R.
+```{r cache=TRUE}
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+#download.file(url,"/Users/Richard/Desktop/Rcourse/data/reproducible_research/stormdata.bz2")
+data <- read.csv("/Users/Richard/Desktop/Rcourse/data/reproducible_research/stormdata.bz2")
+```
+
+## Exploring the data
+```{r}
+dim(data)
+```
+
+let's see how many missing vlues for each column.
+```{r}
+library(plyr)
+nmising <- function(x){sum(is.na(x))}
+sapply(data,nmising)
+```
+
+make all the variables names to lower case.
+```{r}
+names(data)<- tolower(names(data))
+```
+
+## Calculation
+1. calculate the total casuality
+```{r}
+library(dplyr)
+data$casuality <- data$injuries+data$fatalities
+info <- data %>% group_by(evtype) %>% summarize(total=sum(casuality))
+info <- info[order(info$total, decreasing = T),][1:10,]
+info <- info[order(info$evtype),]
+```
+
+2. calculate the total ecnomic loss
+```{r}
+data$propdmgexp <- as.character(data$propdmgexp)
+data$propdmgexp[data$propdmgexp=="K"] <- 1000
+data$propdmgexp[data$propdmgexp=="M"]=1000000
+data$propdmgexp[data$propdmgexp=="B"]=1000000000
+data$propdmgexp[data$propdmgexp=="H"]=100
+data$propdmgexp <- as.numeric(data$propdmgexp)
+data$propdmgexp[is.na(data$propdmgexp)]=0
+data$prop <- data$propdmg*data$propdmgexp
+
+info2 <- data %>% group_by(evtype) %>% summarize(total=sum(prop))
+info2 <- info2[order(info2$total, decreasing = T),][1:10,]
+info2 <- info2[order(info2$evtype),]
+```
+
+# Result
+
+## 1.Population casualities
+This is the result of top 10 harmful type base on the sum of casualties.
+```{r}
+info
+```
+
+plot is based on the previous info using base plotting system
+```{r results="hide"}
+barplot(info$total,names.arg=info$evtype, col="blue", xlab="Top 10 events",
+        ylab="Casualties",main="Casualties due to severe weather events\nin the U.S from 1950-2011")
+```
+
+plot is based on the previous info using ggplot plotting system
+```{r}
+library(ggplot2)
+p1 <- ggplot(data=info,
+             aes(x=reorder(evtype, total), y=log10(total), fill=total )) +
+    geom_bar(stat="identity") +
+    coord_flip() +
+    xlab("Event type") +
+    ylab("Property damage in dollars (log-scale)")
+p1 +  theme(legend.position="none")
+```
+
+## 2.Economic loss
+This is the result of top 10 harmful type base on the sum of economic loss.
+```{r}
+info2
+```
+
+plot is based on the previous info using base ploting system.
+
+```{r}
+barplot(info2$total/1000000,names.arg=info2$evtype, col="lightgreen", xlab="Top 10 events",
+        ylab="Economic loss",main="Economic loss due to severe weather events\nin the U.S from 1950-2011")
+```
+
+A plot of the 7 highest ranked costliest weather event types in the United States are displayed by ratio in a pie chart. (plot is based on the previous info using ggplot2 ploting system.)
+```{r}
+info2$evtype <- as.character(info2$evtype)
+pie(as.numeric(info2$total),
+    labels = info2$evtype,
+    col = topo.colors(10),
+    main = "Plot: Total Financial Damages of top 10 Costliest Weather Event Types")
+```
+
+#Conclusions
+- Regarding Fatalities, Tornados were responisble for the largest amount of casualities for the given period (1950-2011). Excessive Heat was the next death reason in fatalities caused by tornados.
+
+- Regarding Property Damage, Floods and Winds caused damages close to tornados. Propery values are highly impacted/damaged due to this.
